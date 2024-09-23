@@ -248,8 +248,13 @@ static inline void raise_bad_pattern(int code, size_t pos)
   CAMLparam0();
   CAMLlocal1(v_msg);
   value v_arg;
-  v_msg = caml_alloc_string(128);
-  pcre2_get_error_message(code, (PCRE2_UCHAR *)String_val(v_msg), 128);
+  PCRE2_UCHAR8 err[256];
+
+  /* We can safely assume that PCRE2's UTF-8-compatible human-intelligible error
+     messages do not contain NUL. */
+  pcre2_get_error_message_8(code, err, sizeof(err) / sizeof(err[0]));
+  v_msg = caml_copy_string((char *)err);
+
   v_arg = caml_alloc_small(2, 0);
   Field(v_arg, 0) = v_msg;
   Field(v_arg, 1) = Val_int(pos);
