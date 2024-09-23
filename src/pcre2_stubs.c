@@ -30,9 +30,9 @@
 #endif
 
 #if _WIN64
-  typedef long long *caml_int_ptr;
+  typedef volatile long long *caml_int_ptr;
 #else
-  typedef long *caml_int_ptr;
+  typedef volatile long *caml_int_ptr;
 #endif
 
 #if __GNUC__ >= 3
@@ -481,7 +481,7 @@ static inline void handle_match_error(char *loc, const int ret)
 static inline void handle_pcre2_match_result(
   size_t *ovec, value v_ovec, size_t ovec_len, long subj_start, uint32_t ret)
 {
-  caml_int_ptr ocaml_ovec = (caml_int_ptr) &Field(v_ovec, 0);
+  caml_int_ptr ocaml_ovec = &Field(v_ovec, 0);
   const uint32_t subgroups2 = ret * 2;
   const uint32_t subgroups2_1 = subgroups2 - 1;
   const size_t *ovec_src = ovec + subgroups2_1;
@@ -594,8 +594,7 @@ CAMLprim value pcre2_match_stub0(
       } else {
         handle_pcre2_match_result(ovec, v_ovec, ovec_len, subj_start, ret);
         if (is_dfa) {
-          caml_int_ptr ocaml_workspace_dst =
-            (caml_int_ptr) &Field(v_workspace, 0);
+          caml_int_ptr ocaml_workspace_dst = &Field(v_workspace, 0);
           const int *workspace_src = workspace;
           const int *workspace_src_stop = workspace + workspace_len;
           while (workspace_src != workspace_src_stop) {
