@@ -572,42 +572,46 @@ let exec_all ?(iflags = 0L) ?flags ?(rex = def_rex) ?pat ?pos ?callout subj =
       else match_anchored pos ovector idx lst
     else match_normal pos ovector idx lst
   and match_normal pos ovector idx lst =
-    try
-      let ovector' = pcre2_match ~iflags ~rex ~pos ?callout subj in
-      loop (Array.unsafe_get ovector' 1) ovector' (succ idx)
-        ((subj, ovector') :: lst)
-    with Not_found ->
-      (* We have reached the end of the string: return the matches we have
-         accumulated thus far. *)
-      copy_lst (Array.make idx (subj, ovector)) (pred idx) lst
+    let next =
+      try Some (pcre2_match ~iflags ~rex ~pos ?callout subj)
+      with Not_found -> None
+    in
+    match next with
+      | Some ovector' ->
+          loop (Array.unsafe_get ovector' 1) ovector' (succ idx)
+            ((subj, ovector') :: lst)
+      | None -> copy_lst (Array.make idx (subj, ovector)) (pred idx) lst
   and match_anchored pos ovector idx lst =
-    try
-      (* Try to perform an anchored non-empty match, as the previous match was
-         empty. If this succeeds, we can safely advance past the match. *)
-      let ovector' = pcre2_match ~iflags:null_flags ~rex ~pos ?callout subj in
-      loop (Array.unsafe_get ovector' 1) ovector' (succ idx)
-        ((subj, ovector') :: lst)
-    with Not_found ->
-      (* A Not_found exception here does not necessarily mean that there are no
-         more matches remaining in this string: advance to the beginning of the
-         next UTF-8 character or past the beginning of the newline we currently
-         reference, then continue matching. *)
-      let next_offset =
-        if config_newline_is_crlf then
-          if pos < pred subj_len
-            && subj.[pos] == '\r'
-            && subj.[succ pos] == '\n'
-          then 2
+    let pos', ovector', idx', lst' =
+      try
+        (* Try to perform an anchored non-empty match, as the previous match was
+           empty. If this succeeds, we can safely advance past the match. *)
+        let ovector' = pcre2_match ~iflags:null_flags ~rex ~pos ?callout subj in
+        ( Array.unsafe_get ovector' 1, ovector', succ idx
+        , (subj, ovector') :: lst )
+      with Not_found ->
+        (* A Not_found exception here does not necessarily mean that there are
+           no more matches remaining in this string: advance to the beginning of
+           the next UTF-8 character or past the beginning of the newline we
+           currently reference, then continue matching. *)
+        let next_offset =
+          if config_newline_is_crlf then
+            if pos < pred subj_len
+              && subj.[pos] == '\r'
+              && subj.[succ pos] == '\n'
+            then 2
+            else 1
+          else if config_unicode then
+            let first_byte = Char.code subj.[pos] in
+            if first_byte land 0b11111000 = 0b11110000 then 4
+            else if first_byte land 0b11110000 = 0b11100000 then 3
+            else if first_byte land 0b11100000 = 0b11000000 then 2
+            else 1
           else 1
-        else if config_unicode then
-          let first_byte = Char.code subj.[pos] in
-          if first_byte land 0b11111000 = 0b11110000 then 4
-          else if first_byte land 0b11110000 = 0b11100000 then 3
-          else if first_byte land 0b11100000 = 0b11000000 then 2
-          else 1
-        else 1
-      in
-      loop (pos + next_offset) ovector idx lst
+        in
+        (pos + next_offset, ovector, idx, lst)
+    in
+    loop pos' ovector' idx' lst'
   in
   loop (Array.unsafe_get ovector 1) ovector 1 [(subj, ovector)]
 
