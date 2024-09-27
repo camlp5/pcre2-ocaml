@@ -577,10 +577,10 @@ let exec_all ?(iflags = 0L) ?flags ?(rex = def_rex) ?pat ?pos ?callout subj =
       with Not_found -> None
     in
     match next with
-      | Some ovector' ->
-          loop (Array.unsafe_get ovector' 1) ovector' (succ idx)
-            ((subj, ovector') :: lst)
-      | None -> copy_lst (Array.make idx (subj, ovector)) (pred idx) lst
+    | Some ovector' ->
+        loop (Array.unsafe_get ovector' 1) ovector' (succ idx)
+          ((subj, ovector') :: lst)
+    | None -> copy_lst (Array.make idx (subj, ovector)) (pred idx) lst
   and match_anchored pos ovector idx lst =
     let pos', ovector', idx', lst' =
       try
