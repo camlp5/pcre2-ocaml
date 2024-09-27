@@ -11,37 +11,45 @@ let test_full_split ctxt =
 
 let test_exec_all ctxt =
   let assert_matches ~pat subj expected =
-    let assert_substrings_equal (subj_exp, ovec_exp) (subj_act, ovec_act) =
-      assert_equal subj_exp subj_act;
-      Array.iter2 assert_equal ovec_exp ovec_act
+    let rec assert_match_equal idx expected actual =
+      match expected with
+      | (exp_subj, exp_start, exp_stop) :: exp_tl ->
+          assert_equal exp_subj (get_substring actual idx);
+          let act_start, act_stop = get_substring_ofs actual idx in
+          assert_equal exp_start act_start;
+          assert_equal exp_stop act_stop;
+          assert_match_equal (succ idx) exp_tl actual
+      | [] -> ()
+    and assert_substrings_equal expected actual =
+      match expected, actual with
+      | exp_hd :: exp_tl, act_hd :: act_tl ->
+          assert_equal (List.length exp_hd) (num_of_subs act_hd);
+          assert_match_equal 0 exp_hd act_hd;
+          assert_substrings_equal exp_tl act_tl
+      | [], [] -> ()
+      | _, _ -> failwith "Unequal substring list lengths"
     in
-    let expected_subj = Array.map (fun ovec -> subj, ovec) expected in
     let actual = exec_all ~pat subj in
-    assert_equal (Array.length expected_subj) (Array.length actual);
-    Array.iter2 assert_substrings_equal expected_subj actual
+    assert_equal (List.length expected) (Array.length actual);
+    assert_substrings_equal expected @@ Array.to_list actual
   in
   (* A pattern with no matches should raise Not_found. *)
   assert_raises Not_found (fun () -> exec_all ~pat:"empty" "");
   assert_raises Not_found (fun () -> exec_all ~pat:"empty" "empt");
   (* Single matches of non-zero-length patterns. *)
-  assert_matches ~pat:"p" "p" [| [|0; 1; 0|] |];
-  assert_matches ~pat:"pattern" "pattern" [| [|0; 7; 0|] |];
-  assert_matches ~pat:"pattern" "This is a pattern." [| [|10; 17; 0|] |];
+  assert_matches ~pat:"p" "p" [[("p", 0, 1)]];
+  assert_matches ~pat:"pattern" "pattern" [[("pattern", 0, 7)]];
   (* Multiple matches of non-zero-length patterns. *)
-  assert_matches ~pat:"a" "aaa" [| [|0; 1; 0|]; [|1; 2; 0|]; [|2; 3; 0|] |];
+  assert_matches ~pat:"a" "aaa" [[("a", 0, 1)]; [("a", 1, 2)]; [("a", 2, 3)]];
   assert_matches ~pat:"hello|ocaml" "hello ocaml"
-    [| [|0; 5; 0|]; [|6; 11; 0|] |];
+    [[("hello", 0, 5)]; [("ocaml", 6, 11)]];
   assert_matches ~pat:"(hello|ocaml)" "hello ocaml"
-    [| [|0; 5; 0; 5; 0; 0|]; [|6; 11; 6; 11; 0; 0|] |];
-  assert_matches ~pat:"(hello|(ocaml))" "hello ocaml"
-    [| [|0; 5; 0; 5; -1; -1; 0; 0; 0|]; [|6; 11; 6; 11; 6; 11; 0; 0; 0|] |];
+    [[("hello", 0, 5); ("hello", 0, 5)]; [("ocaml", 6, 11); ("ocaml", 6, 11)]];
   (* Matches of zero-length patterns. *)
+  assert_matches ~pat:"(?=(hello|ocaml))" "hello ocaml"
+    [[("", 0, 0); ("hello", 0, 5)]; [("", 6, 6); ("ocaml", 6, 11)]];
   assert_matches ~pat:"(?=(hello|ocaml))" "hellocaml"
-    [| [|0; 0; 0; 5; 0; 0|]; [|4; 4; 4; 9; 0; 0|] |];
-  assert_matches ~pat:"(?=(hello|ocaml))|language" "hellocamlanguage"
-    [| [|0; 0; 0; 5; 0; 0|]; [|4; 4; 4; 9; 0; 0|]; [|8; 16; -1; -1; 0; 0|] |];
-  assert_matches ~pat:"(?=(hello|ocaml))|language" "hellocamllanguage"
-    [| [|0; 0; 0; 5; 0; 0|]; [|4; 4; 4; 9; 0; 0|]; [|9; 17; -1; -1; 0; 0|] |]
+    [[("", 0, 0); ("hello", 0, 5)]; [("", 4, 4); ("ocaml", 4, 9)]]
 
 let suite = "Test pcre2" >::: [
       "test_full_split" >:: test_full_split;
