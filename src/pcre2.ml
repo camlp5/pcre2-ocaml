@@ -597,8 +597,8 @@ let exec_all ?(iflags = 0L) ?flags ?(rex = def_rex) ?pat ?pos ?callout subj =
         let next_offset =
           if config_newline_is_crlf then
             if pos < pred subj_len
-              && subj.[pos] == '\r'
-              && subj.[succ pos] == '\n'
+              && Char.equal subj.[pos] '\r'
+              && Char.equal subj.[succ pos] '\n'
             then 2
             else 1
           else if config_unicode then
