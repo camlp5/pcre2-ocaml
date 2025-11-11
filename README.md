@@ -3,13 +3,13 @@
 Fork of the original [pcre-ocaml project](https://github.com/mmottl/pcre-ocaml)
 for PCRE2 support.
 
-These are the bindings as needed by the [Haxe
-compiler](https://github.com/HaxeFoundation/haxe). I do not plan on maintaining
-this repository.
+These are the bindings as needed by the
+[Haxe compiler](https://github.com/HaxeFoundation/haxe). I do not plan on
+maintaining this repository.
 
 This [OCaml](http://www.ocaml.org) library interfaces with the C library
-[PCRE2](http://www.pcre.org), providing Perl-compatible regular expressions
-for string matching.
+[PCRE2](http://www.pcre.org), providing Perl-compatible regular expressions for
+string matching.
 
 ## Features
 
@@ -25,8 +25,8 @@ Reasons to choose PCRE2-OCaml:
 - The PCRE2 library by Philip Hazel is mature and stable, implementing nearly
   all Perl regular expression features. High-level OCaml functions (split,
   replace, etc.) are compatible with Perl functions, as much as OCaml allows.
-  Some developers find Perl-style regex syntax more intuitive and powerful
-  than the Emacs-style regex used in OCaml's `Str` module.
+  Some developers find Perl-style regex syntax more intuitive and powerful than
+  the Emacs-style regex used in OCaml's `Str` module.
 
 - PCRE2-OCaml is reentrant and thread-safe, unlike the `Str` module. This
   reentrancy offers convenience, eliminating concerns about library state.
@@ -45,14 +45,14 @@ Reasons to choose PCRE2-OCaml:
 
 Please run:
 
-```
-$ odig odoc pcre2
+```sh
+odig odoc pcre2
 ```
 
 Or (maybe?):
 
-```
-$ dune build @doc
+```sh
+dune build @doc
 ```
 
 Functions support two flag types:
@@ -79,8 +79,7 @@ Functions support two flag types:
    done
    ```
 
-   Translating flags outside loops saves cycles. Avoid creating regex in
-   loops:
+   Translating flags outside loops saves cycles. Avoid creating regex in loops:
 
    ```ocaml
    for i = 1 to 1000 do
@@ -117,8 +116,7 @@ utop # let rex = regexp "12+3";;
 val rex : regexp = <abstr>
 utop # let workspace = Array.make 40 0;;
 val workspace : int array =
-  [|0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0;
-    0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0|]
+  [| ... |]
 utop # pcre2_dfa_match ~rex ~flags:[`PARTIAL_SOFT] ~workspace "12222";;
 Exception: Pcre2.Error Partial.
 utop # pcre2_dfa_match ~rex ~flags:[`PARTIAL_SOFT; `DFA_RESTART] ~workspace "2222222";;

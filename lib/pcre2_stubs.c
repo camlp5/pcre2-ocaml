@@ -58,8 +58,7 @@ typedef long *caml_int_ptr;
 #define Is_none(v) ((v) == Val_none)
 #define Is_some(v) Is_block(v)
 
-CAMLexport static value caml_alloc_some(value v)
-{
+CAMLexport static value caml_alloc_some(value v) {
   CAMLparam1(v);
   value some = caml_alloc_small(1, 0);
   Field(some, 0) = v;
@@ -156,7 +155,7 @@ static int pcre2_callout_handler(pcre2_callout_block *cb, struct cod *cod) {
 
     const size_t *ovec_src = cb->offset_vector + subgroups2_1;
     caml_int_ptr ovec_dst =
-        (long *)&Field(Field(v_substrings, 1), 0) + subgroups2_1;
+        (caml_int_ptr)&Field(Field(v_substrings, 1), 0) + subgroups2_1;
     long subj_start = cod->subj_start;
 
     copy_ovector(subj_start, ovec_src, ovec_dst, subgroups2);
@@ -253,14 +252,16 @@ static inline void raise_workspace_size(void) { raise_pcre2_error(Val_int(5)); }
 /* The length of msg_buf in this function is chosen to be larger than
    any existing error-message in pcre2_error.c.  Currently (Feb 25, 2025, Git
    commit 0880a6c33a51e2dfded8864a6bcc8ae4e9a90f89),  the longest error-message
-   is about 110 chars.  Uncomfortably close to 128, so I doubled the length to 256.
+   is about 110 chars.  Uncomfortably close to 128, so I doubled the length to
+   256.
 */
 
 static inline void raise_bad_pattern(int code, size_t pos) {
   CAMLparam0();
   CAMLlocal2(v_msg, v_arg);
   char msg_buf[128];
-  pcre2_get_error_message(code, (PCRE2_UCHAR *)msg_buf, (sizeof msg_buf) / (sizeof (PCRE2_UCHAR)));
+  pcre2_get_error_message(code, (PCRE2_UCHAR *)msg_buf,
+                          (sizeof msg_buf) / (sizeof(PCRE2_UCHAR)));
   v_msg = caml_copy_string(msg_buf);
   v_arg = caml_alloc_small(2, 0);
   Field(v_arg, 0) = v_msg;
