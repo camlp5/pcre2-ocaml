@@ -1,7 +1,9 @@
 .PHONY: all clean doc
 
-all:
+build:
 	@dune build @install
+
+all: build
 	@make -C lib compile_commands.json
 
 test: all

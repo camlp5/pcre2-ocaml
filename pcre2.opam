@@ -14,7 +14,7 @@ bug-reports: "https://github.com/camlp5/pcre2-ocaml/issues"
 depends: [
   "dune" {>= "2.7"}
   "ocaml" {>= "4.08"}
-  "dune-compiledb"
+  "dune-compiledb" {dev}
   "dune-configurator"
   "conf-libpcre2-8" {build}
   "ounit2" {with-test}

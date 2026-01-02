@@ -26,7 +26,7 @@
  (depends
   (ocaml
    (>= 4.08))
-  dune-compiledb
+  (dune-compiledb :dev)
   dune-configurator
   (conf-libpcre2-8 :build)
   (ounit2 :with-test)))
