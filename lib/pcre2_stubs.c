@@ -140,14 +140,14 @@ static inline void copy_ovector(long subj_start, const size_t *ovec_src,
 
 /* Callout handler */
 static int pcre2_callout_handler(pcre2_callout_block *cb, struct cod *cod) {
+  CAMLparam0();
+  CAMLlocal3(v_res, v_callout_data, v_substrings);
+
   if (cod != NULL) {
-    /* Callout is available */
-    value v_res;
-
     /* Set up parameter array */
-    value v_callout_data = caml_alloc_small(8, 0);
+    v_callout_data = caml_alloc_small(8, 0);
 
-    const value v_substrings = *cod->v_substrings_p;
+    v_substrings = *cod->v_substrings_p;
 
     const uint32_t capture_top = cb->capture_top;
     uint32_t subgroups2 = capture_top << 1;
@@ -176,13 +176,13 @@ static int pcre2_callout_handler(pcre2_callout_block *cb, struct cod *cod) {
       /* Callout raised an exception */
       const value v_exn = Extract_exception(v_res);
       if (Field(v_exn, 0) == *pcre2_exc_Backtrack)
-        return 1;
+        CAMLreturnT(int, 1);
       cod->v_exn = v_exn;
-      return PCRE2_ERROR_CALLOUT;
+      CAMLreturnT(int, PCRE2_ERROR_CALLOUT);
     }
   }
 
-  return 0;
+  CAMLreturnT(int, 0);
 }
 
 /* Fetches the named OCaml-values + caches them and
@@ -519,8 +519,10 @@ CAMLprim value pcre2_match_stub0(int64_t v_opt, value v_rex, intnat v_pos,
                                  intnat v_subj_start, value v_subj,
                                  value v_ovec, value v_maybe_cof,
                                  value v_workspace) {
+  CAMLparam5(v_rex, v_subj, v_ovec, v_maybe_cof, v_workspace);
+  CAMLlocal2(v_cof, v_substrings);
   int ret;
-  int is_dfa = v_workspace != (value)NULL;
+  int is_dfa = Is_block(v_workspace);
   long pos = v_pos, subj_start = v_subj_start;
   size_t ovec_len = Wosize_val(v_ovec), len = caml_string_length(v_subj);
 
@@ -565,8 +567,7 @@ CAMLprim value pcre2_match_stub0(int64_t v_opt, value v_rex, intnat v_pos,
 
     /* There are callout functions */
     else {
-      value v_cof = Field(v_maybe_cof, 0);
-      value v_substrings;
+      v_cof = Field(v_maybe_cof, 0);
       PCRE2_UCHAR *subj = caml_stat_alloc(sizeof(char) * len);
       int workspace_len = 0;
       int *workspace = NULL;
@@ -581,11 +582,7 @@ CAMLprim value pcre2_match_stub0(int64_t v_opt, value v_rex, intnat v_pos,
       cod.subj_start = subj_start;
       memcpy(subj, ocaml_subj, len);
 
-      Begin_roots4(v_rex, v_cof, v_substrings, v_ovec);
-      Begin_roots1(v_subj);
       v_substrings = caml_alloc_small(2, 0);
-      End_roots();
-
       Field(v_substrings, 0) = v_subj;
       Field(v_substrings, 1) = v_ovec;
 
@@ -603,7 +600,6 @@ CAMLprim value pcre2_match_stub0(int64_t v_opt, value v_rex, intnat v_pos,
             pcre2_match(code, subj, len, pos, v_opt, match_data, new_mcontext);
 
       caml_stat_free(subj);
-      End_roots();
 
       pcre2_match_context_free(new_mcontext);
       size_t *ovec = pcre2_get_ovector_pointer(match_data);
@@ -634,14 +630,14 @@ CAMLprim value pcre2_match_stub0(int64_t v_opt, value v_rex, intnat v_pos,
     pcre2_match_data_free(match_data);
   }
 
-  return Val_unit;
+  CAMLreturn(Val_unit);
 }
 
 CAMLprim value pcre2_match_stub(int64_t v_opt, value v_rex, intnat v_pos,
                                 intnat v_subj_start, value v_subj, value v_ovec,
                                 value v_maybe_cof) {
   return pcre2_match_stub0(v_opt, v_rex, v_pos, v_subj_start, v_subj, v_ovec,
-                           v_maybe_cof, (value)NULL);
+                           v_maybe_cof, Val_unit);
 }
 
 /* Byte-code hook for pcre2_match_stub
@@ -649,7 +645,7 @@ CAMLprim value pcre2_match_stub(int64_t v_opt, value v_rex, intnat v_pos,
 CAMLprim value pcre2_match_stub_bc(value *argv, int __unused argn) {
   return pcre2_match_stub0(Int64_val(argv[0]), argv[1], Int_val(argv[2]),
                            Int_val(argv[3]), argv[4], argv[5], argv[6],
-                           (value)NULL);
+                           Val_unit);
 }
 
 /* Byte-code hook for pcre2_dfa_match_stub
