@@ -546,11 +546,13 @@ CAMLprim value pcre2_match_stub0(int64_t v_opt, value v_rex, intnat v_pos,
 
     /* Special case when no callout functions specified */
     if (Is_none(v_maybe_cof)) {
-      /* Performs the match */
+      /* No callouts: pcre2_*_match runs without invoking OCaml code, so no
+         GC can move v_workspace during the call.  We can pass a pointer
+         straight into the Bytes buffer. */
       if (is_dfa)
         ret = pcre2_dfa_match(code, ocaml_subj, len, pos, v_opt, match_data,
-                              mcontext, (int *)&Field(v_workspace, 0),
-                              Wosize_val(v_workspace));
+                              mcontext, (int *)Bytes_val(v_workspace),
+                              caml_string_length(v_workspace) / sizeof(int));
       else
         ret = pcre2_match(code, ocaml_subj, len, pos, v_opt, match_data,
                           mcontext);
@@ -569,7 +571,7 @@ CAMLprim value pcre2_match_stub0(int64_t v_opt, value v_rex, intnat v_pos,
     else {
       v_cof = Field(v_maybe_cof, 0);
       PCRE2_UCHAR *subj = caml_stat_alloc(sizeof(char) * len);
-      int workspace_len = 0;
+      size_t ws_byte_len = 0;
       int *workspace = NULL;
       struct cod cod = {0, (value *)NULL, (value *)NULL, (value)NULL};
       pcre2_match_context *new_mcontext = pcre2_match_context_copy(mcontext);
@@ -590,11 +592,16 @@ CAMLprim value pcre2_match_stub0(int64_t v_opt, value v_rex, intnat v_pos,
       cod.v_cof_p = &v_cof;
 
       if (is_dfa) {
-        workspace_len = Wosize_val(v_workspace);
-        workspace = caml_stat_alloc(sizeof(int) * workspace_len);
+        /* Callouts can run OCaml code that triggers GC, which may relocate
+           the Bytes block backing v_workspace.  Snapshot its contents into
+           a stable caml_stat_alloc'd buffer, run the match against that,
+           then memcpy back via the (possibly relocated) v_workspace. */
+        ws_byte_len = caml_string_length(v_workspace);
+        workspace = caml_stat_alloc(ws_byte_len);
+        memcpy(workspace, Bytes_val(v_workspace), ws_byte_len);
         ret = pcre2_dfa_match(code, subj, len, pos, v_opt, match_data,
-                              new_mcontext, (int *)&Field(v_workspace, 0),
-                              workspace_len);
+                              new_mcontext, workspace,
+                              ws_byte_len / sizeof(int));
       } else
         ret =
             pcre2_match(code, subj, len, pos, v_opt, match_data, new_mcontext);
@@ -614,15 +621,7 @@ CAMLprim value pcre2_match_stub0(int64_t v_opt, value v_rex, intnat v_pos,
       } else {
         handle_pcre2_match_result(ovec, v_ovec, ovec_len, subj_start, ret);
         if (is_dfa) {
-          caml_int_ptr ocaml_workspace_dst =
-              (caml_int_ptr)&Field(v_workspace, 0);
-          const int *workspace_src = workspace;
-          const int *workspace_src_stop = workspace + workspace_len;
-          while (workspace_src != workspace_src_stop) {
-            *ocaml_workspace_dst = *workspace_src;
-            ocaml_workspace_dst++;
-            workspace_src++;
-          }
+          memcpy(Bytes_val(v_workspace), workspace, ws_byte_len);
           caml_stat_free(workspace);
         }
       }

@@ -437,6 +437,16 @@ val pcre2_match :
 
     @raise Not_found if pattern does not match. *)
 
+type workspace
+(** Opaque scratch/restart buffer for {!pcre2_dfa_match}. Backed internally by a
+    raw byte buffer that the GC does not scan, so PCRE2 can write its own
+    representation into it without violating OCaml's value tagging contract. *)
+
+val create_workspace : size:int -> unit -> workspace
+(** [create_workspace ~size ()] allocates a fresh workspace. The unit of [size]
+    is unspecified (currently corresponds to 8 bytes of underlying storage per
+    unit). PCRE2 requires a minimum of [20]. *)
+
 val pcre2_dfa_match :
   ?iflags:irflag ->
   ?flags:rflag list ->
@@ -444,7 +454,7 @@ val pcre2_dfa_match :
   ?pat:string ->
   ?pos:int ->
   ?callout:callout ->
-  ?workspace:int array ->
+  ?workspace:workspace ->
   string ->
   int array
 (** [pcre2_dfa_match ?iflags ?flags ?rex ?pat ?pos ?callout ?workspace subj]
@@ -1061,7 +1071,7 @@ val unsafe_pcre2_dfa_match :
   subj:string ->
   int array ->
   callout option ->
-  workspace:int array ->
+  workspace:workspace ->
   unit
 (** [unsafe_pcre_dfa_exec flags rex ~pos ~subj_start ~subj offset_vector callout
      ~workpace]. You should read the C-source to know what happens. If you do
