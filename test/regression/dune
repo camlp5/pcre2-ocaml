@@ -1,0 +1,3 @@
+(executables
+ (names repro1 repro2)
+ (libraries pcre2))
