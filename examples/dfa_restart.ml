@@ -5,7 +5,7 @@ let show_array arr =
   Array.map string_of_int arr
   |> Array.to_list |> String.concat ";" |> sprintf "[|%s|]"
 
-let new_workspace () = Array.make 50 0
+let new_workspace () = create_workspace ~size:50 ()
 
 let () =
   let pat =

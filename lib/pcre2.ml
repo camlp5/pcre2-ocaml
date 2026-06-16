@@ -523,6 +523,10 @@ let make_ovector rex =
   let subgroups2 = subgroups1 lsl 1 in
   (subgroups2, Array.make (subgroups1 + subgroups2) 0)
 
+type workspace = Bytes.t
+
+let create_workspace ~size () = Bytes.create (size * 8)
+
 external unsafe_pcre2_dfa_match :
   (irflag[@unboxed]) ->
   regexp ->
@@ -531,11 +535,11 @@ external unsafe_pcre2_dfa_match :
   subj:string ->
   int array ->
   callout option ->
-  workspace:int array ->
+  workspace:workspace ->
   unit = "pcre2_dfa_match_stub_bc" "pcre2_match_stub0"
 
 let pcre2_dfa_match ?(iflags = 0L) ?flags ?(rex = def_rex) ?pat ?(pos = 0)
-    ?callout ?(workspace = Array.make 20 0) subj =
+    ?callout ?(workspace = create_workspace ~size:20 ()) subj =
   let rex = match pat with Some str -> regexp str | _ -> rex in
   let iflags = match flags with Some flags -> rflags flags | _ -> iflags in
   let _, ovector = make_ovector rex in
