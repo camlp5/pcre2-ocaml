@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.0.5]
+
+### Fixed
+
+- Make sure dependencies used for `lib/compile_commands.json` are only used
+  for developers, not users.
+
 ## [8.0.4] - 2025-10-19
 
 ### Added
